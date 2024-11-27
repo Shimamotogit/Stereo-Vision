@@ -17,7 +17,7 @@ blockSize = 5
 if algorithm == "BM":
     # StereoBM_createの設定
     stereo = cv2.StereoBM_create(
-        numDisparities = 16 * 12,
+        numDisparities = 16 * 8,
         # 視差範囲: 視差の最大値から最小値を引いた時の値、16の倍数で指定する
         # 高い値にすると広範囲の視差を計算可能になるが、計算コストが増える
         
@@ -32,7 +32,7 @@ elif algorithm == "SGBM":
         minDisparity = 0,
         # 最小視差: 計算する視差の最小値、通常は0
 
-        numDisparities = 16 * 10,
+        numDisparities = 16 * 4,
         # 視差範囲: 視差の最大値から最小値を引いた時の値、16の倍数で指定する
         # BMより精度が高い計算が可能
 
@@ -88,8 +88,8 @@ else:
     exit()
 
 # カメラの画像を取得
-cap_left  = cv2.VideoCapture(0) # 左カメラ
-cap_right = cv2.VideoCapture(1) # 右カメラ
+cap_left  = cv2.VideoCapture(0, cv2.CAP_DSHOW) # 左カメラ
+cap_right = cv2.VideoCapture(1, cv2.CAP_DSHOW) # 右カメラ
 
 if not (cap_left.isOpened() and cap_right.isOpened()):
     print("カメラが開けませんでした。")
@@ -134,6 +134,10 @@ wls_filter = cv2.ximgproc.createDisparityWLSFilter(matcher_left=stereo)
 wls_filter.setLambda(8000)     # スムージングの強さ（大きくするほど滑らかに）
 wls_filter.setSigmaColor(1.5)  # 色空間の影響範囲（エッジの保持度合いを調整）
 
+smoothing_frame_value = 5 #指定されたフレーム数の平均を用いて視差マップを平滑化する
+                          #高い値ほど平滑化されるが、残像が残る。利用しない場合は'1'
+disp_visual_list = []
+
 # リアルタイム処理ループ
 while True:
     ret_left,  frame_left  = cap_left.read()
@@ -161,10 +165,14 @@ while True:
     )
 
     # フィルタ後の視差マップを可視化
-    # disp_visual = cv2.normalize(filtered_disparity, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    disp_visual = cv2.normalize(left_disparity, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+    disp_visual = cv2.normalize(filtered_disparity, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+    # disp_visual = cv2.normalize(left_disparity, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
 
-    disp_colormap = cv2.applyColorMap(disp_visual, cv2.COLORMAP_PLASMA)
+    disp_visual_list.append(disp_visual)
+    disp_visual_list = disp_visual_list[-smoothing_frame_value:]
+    disp_average_visual = np.mean(disp_visual_list, axis=0).astype(np.uint8)
+
+    disp_colormap = cv2.applyColorMap(disp_average_visual, cv2.COLORMAP_PLASMA)
 
     # 結果をリアルタイム表示
     cv2.imshow("Rectified Left", rectified_left)
