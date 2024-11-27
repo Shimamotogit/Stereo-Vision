@@ -4,7 +4,7 @@ import os
 import time
 
 # キャリブレーション用のチェスボード設定
-chessboard_size = (9, 6)
+chessboard_size = (8, 5)
 square_size     = 1.0  # 正方形1つのサイズ（任意の単位）
 
 # カメラのID設定
