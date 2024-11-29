@@ -25,8 +25,8 @@ imgpoints_left  = []  # 左カメラの2Dポイント
 imgpoints_right = []  # 右カメラの2Dポイント
 
 # カメラを起動
-cap_left  = cv2.VideoCapture(camera_id_left)
-cap_right = cv2.VideoCapture(camera_id_right)
+cap_left  = cv2.VideoCapture(camera_id_left,  cv2.CAP_DSHOW)
+cap_right = cv2.VideoCapture(camera_id_right, cv2.CAP_DSHOW)
 
 if not cap_left.isOpened() or not cap_right.isOpened():
     print("カメラを起動できませんでした。")
