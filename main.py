@@ -4,7 +4,7 @@ import numpy as np
 def load_stereo_params(filename="stereo_calib.xml"):
     """
     ステレオカメラキャリブレーションデータを読み込む
-    
+
     Args:
         filename (str): キャリブレーションデータのファイルパス
 
@@ -27,11 +27,11 @@ def load_stereo_params(filename="stereo_calib.xml"):
 def initialize_stereo_matcher(algorithm, blockSize):
     """
     ステレオマッチャー（BMまたはSGBM）を初期化する関数
-    
+
     Args:
         algorithm (str): "BM" または "SGBM" を指定
         blockSize (int): ブロックサイズ（奇数）
-        
+
     Returns:
         cv2.StereoMatcher: 初期化されたステレオマッチャー
     """
@@ -120,7 +120,7 @@ def process_stereo_frames(cap_left, cap_right, stereo, stereo_right, wls_filter,
     disp_visual_list = []
 
     while True:
-        ret_left, frame_left = cap_left.read()
+        ret_left,  frame_left  = cap_left.read()
         ret_right, frame_right = cap_right.read()
 
         if not (ret_left and ret_right):
@@ -153,7 +153,7 @@ def process_stereo_frames(cap_left, cap_right, stereo, stereo_right, wls_filter,
             break
 
 def main():
-    camera_id_left = 1
+    camera_id_left  = 1
     camera_id_right = 2
     params = load_stereo_params()
     stereo = initialize_stereo_matcher("BM", 5)

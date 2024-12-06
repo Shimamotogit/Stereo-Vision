@@ -184,7 +184,7 @@ def main():
     if not cap_left.isOpened() or not cap_right.isOpened():
         print("カメラを起動できませんでした")
         return
-    
+
     _,  frame_left  = cap_left.read()
     gray_left  = cv2.cvtColor(frame_left,  cv2.COLOR_BGR2GRAY)
 
