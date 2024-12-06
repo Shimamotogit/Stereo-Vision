@@ -166,8 +166,8 @@ def main():
 
     chessboard_size = (8, 5)
     square_size = 1.0
-    camera_id_left = 0
-    camera_id_right = 1
+    camera_id_left = 1
+    camera_id_right = 2
     image_folder = "calib_images"
     os.makedirs(image_folder, exist_ok=True)
 
@@ -184,6 +184,9 @@ def main():
     if not cap_left.isOpened() or not cap_right.isOpened():
         print("カメラを起動できませんでした")
         return
+    
+    _,  frame_left  = cap_left.read()
+    gray_left  = cv2.cvtColor(frame_left,  cv2.COLOR_BGR2GRAY)
 
     try:
         capture_stereo_images(
@@ -195,7 +198,7 @@ def main():
 
     if len(objpoints) > 0:
         cameraMatrixL, distCoeffsL, cameraMatrixR, distCoeffsR, R, T = perform_stereo_calibration(
-            objpoints, imgpoints_left, imgpoints_right, cap_left.shape
+            objpoints, imgpoints_left, imgpoints_right, gray_left.shape    
         )
         save_calibration_results('stereo_calib.xml', cameraMatrixL, distCoeffsL, cameraMatrixR, distCoeffsR, R, T)
     else:

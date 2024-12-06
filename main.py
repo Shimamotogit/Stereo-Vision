@@ -153,13 +153,15 @@ def process_stereo_frames(cap_left, cap_right, stereo, stereo_right, wls_filter,
             break
 
 def main():
+    camera_id_left = 1
+    camera_id_right = 2
     params = load_stereo_params()
     stereo = initialize_stereo_matcher("BM", 5)
     stereo_right = cv2.ximgproc.createRightMatcher(stereo)
     wls_filter = create_wls_filter(stereo)
 
-    cap_left  = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    cap_right = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    cap_left  = cv2.VideoCapture(camera_id_left,  cv2.CAP_DSHOW)
+    cap_right = cv2.VideoCapture(camera_id_right, cv2.CAP_DSHOW)
     if not (cap_left.isOpened() and cap_right.isOpened()):
         print("カメラが開けませんでした")
         return
