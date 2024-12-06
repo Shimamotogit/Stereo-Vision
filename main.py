@@ -136,7 +136,11 @@ def process_stereo_frames(cap_left, cap_right, stereo, stereo_right, wls_filter,
         left_disparity  = stereo.compute(gray_left, gray_right).astype(np.float32) / 16.0
         right_disparity = stereo_right.compute(gray_right, gray_left).astype(np.float32) / 16.0
 
-        filtered_disparity = wls_filter.filter(left_disparity, gray_left, disparity_map_right=right_disparity)
+        left_disparity  = left_disparity.astype(np.int16)
+        right_disparity = right_disparity.astype(np.int16)
+
+        filtered_disparity = wls_filter.filter(disparity_map_left=left_disparity, left_view=gray_left, disparity_map_right=right_disparity)
+        filtered_disparity = np.clip(filtered_disparity, -16, None)
         disp_visual = cv2.normalize(filtered_disparity, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
 
         disp_visual_list.append(disp_visual)
