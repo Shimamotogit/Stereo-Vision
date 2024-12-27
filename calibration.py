@@ -84,9 +84,9 @@ def detect_chessboard(frame_left, frame_right, chessboard_size):
         chessboard_size     (tuple) : チェスボードのコーナー数（列, 行）
 
     Returns:
-        is_detect (bool)          : チェスボードが検出されたかどうか
-        cornersL  (numpy.ndarray) : 左カメラのチェスボードコーナー
-        cornersR  (numpy.ndarray) : 右カメラのチェスボードコーナー
+        is_detect         (bool) : チェスボードが検出されたかどうか
+        cornersL (numpy.ndarray) : 左カメラのチェスボードコーナー
+        cornersR (numpy.ndarray) : 右カメラのチェスボードコーナー
     """
 
     gray_left  = cv2.cvtColor(frame_left,  cv2.COLOR_BGR2GRAY)
@@ -137,21 +137,17 @@ def perform_stereo_calibration(
     """
 
     print("キャリブレーションを実行中...")
+    import concurrent.futures
 
-    _, cameraMatrixL, distCoeffsL, *_ = cv2.calibrateCamera(
-        objpoints, 
-        imgpoints_left, 
-        cap_left_shape[::-1], 
-        None, 
-        None
-    )
-    _, cameraMatrixR, distCoeffsR, *_ = cv2.calibrateCamera(
-        objpoints, 
-        imgpoints_right, 
-        cap_left_shape[::-1],
-        None,
-        None
-    )
+    def calibrate_camera(objpoints, imgpoints, image_shape):
+        return cv2.calibrateCamera(objpoints, imgpoints, image_shape, None, None)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_left = executor.submit(calibrate_camera, objpoints, imgpoints_left, cap_left_shape[::-1])
+        future_right = executor.submit(calibrate_camera, objpoints, imgpoints_right, cap_left_shape[::-1])
+
+        _, cameraMatrixL, distCoeffsL, *_ = future_left.result()
+        _, cameraMatrixR, distCoeffsR, *_ = future_right.result()
 
     *_, R, T, E, F = cv2.stereoCalibrate(
         objpoints, imgpoints_left, imgpoints_right,
@@ -195,8 +191,8 @@ def main():
 
     chessboard_size = (8, 5)
     square_size = 1.0
-    camera_id_left = 1
-    camera_id_right = 2
+    camera_id_left = 0
+    camera_id_right = 1
     save_image = False
     image_folder = "ti"
     os.makedirs(image_folder, exist_ok=True)
