@@ -9,10 +9,10 @@ def prepare_chessboard_points(chessboard_size, square_size):
 
     Args:
         chessboard_size (tuple) : チェスボードのコーナー数（列, 行）
-        square_size (float)     : チェスボードの各正方形のサイズ（任意の単位）
+        square_size     (float) : チェスボードの各正方形のサイズ（任意の単位）
 
     Returns:
-        numpy.ndarray           : チェスボードの3D座標
+        objp    (numpy.ndarray) : チェスボードの3D座標
     """
 
     objp = np.zeros((chessboard_size[0] * chessboard_size[1], 3), np.float32)
@@ -20,19 +20,28 @@ def prepare_chessboard_points(chessboard_size, square_size):
     objp *= square_size
     return objp
 
-def capture_stereo_images(cap_left, cap_right, chessboard_size, objpoints, imgpoints_left, imgpoints_right, image_folder):
+def capture_stereo_images(
+    cap_left, cap_right,
+    objpoints, imgpoints_left, imgpoints_right,
+    chessboard_size, square_size,
+    save_image,
+    image_folder
+    ):
     """
     ステレオカメラで画像をキャプチャし、チェスボードのコーナーを検出
 
     Args:
         cap_left  (cv2.VideoCapture) : 左カメラのキャプチャオブジェクト
         cap_right (cv2.VideoCapture) : 右カメラのキャプチャオブジェクト
-        chessboard_size (tuple)      : チェスボードのコーナー数（列, 行）
-        objpoints (list)             : 3Dポイントのリスト
-        imgpoints_left  (list)       : 左カメラの検出した2Dポイントリスト
-        imgpoints_right (list)       : 右カメラの検出した2Dポイントリスト
-        image_folder (str)           : 画像を保存するフォルダのパス
+        objpoints            (list)  : 3Dポイントのリスト
+        imgpoints_left       (list)  : 左カメラの検出した2Dポイントリスト
+        imgpoints_right      (list)  : 右カメラの検出した2Dポイントリスト
+        chessboard_size      (tuple) : チェスボードのコーナー数（列, 行）
+        square_size          (float) : チェスボードの各正方形のサイズ（任意の単位）
+        image_folder         (str)   : 画像を保存するフォルダのパス
     """
+
+    objp = prepare_chessboard_points(chessboard_size, square_size)
 
     print("チェスボードをカメラに向けてください's'で撮影、'q'で終了")
 
@@ -49,28 +58,35 @@ def capture_stereo_images(cap_left, cap_right, chessboard_size, objpoints, imgpo
 
         key = cv2.waitKey(1)
         if key == ord('s'):
-            detect_and_save_chessboard(
-                frame_left, frame_right, chessboard_size, objpoints, imgpoints_left, imgpoints_right, image_folder
-            )
+            is_detect, cornersL, cornersR = detect_chessboard(frame_left, frame_right, chessboard_size)
+
+            if is_detect:
+                objpoints.append(objp)
+                imgpoints_left.append(cornersL)
+                imgpoints_right.append(cornersR)
+
+                if save_image:
+                    timestamp = time.time()
+                    cv2.imwrite(f"{image_folder}/left_{timestamp}.jpg",  frame_left)
+                    cv2.imwrite(f"{image_folder}/right_{timestamp}.jpg", frame_right)
         elif key == ord('q'):
             break
 
     cv2.destroyAllWindows()
 
-def detect_and_save_chessboard(
-    frame_left, frame_right, chessboard_size, objpoints, imgpoints_left, imgpoints_right, image_folder
-    ):
+def detect_chessboard(frame_left, frame_right, chessboard_size):
     """
-    チェスボードを検出し、ポイントと画像を保存
+    チェスボードを検出
 
     Args:
         frame_left  (numpy.ndarray) : 左カメラから取得したフレーム
         frame_right (numpy.ndarray) : 右カメラから取得したフレーム
-        chessboard_size (tuple)     : チェスボードのコーナー数（列, 行）
-        objpoints (list)            : 3Dポイントのリスト
-        imgpoints_left  (list)      : 左カメラの検出した2Dポイントリスト
-        imgpoints_right (list)      : 右カメラの検出した2Dポイントリスト
-        image_folder (str)          : 画像を保存するフォルダのパス
+        chessboard_size     (tuple) : チェスボードのコーナー数（列, 行）
+
+    Returns:
+        is_detect (bool)          : チェスボードが検出されたかどうか
+        cornersL  (numpy.ndarray) : 左カメラのチェスボードコーナー
+        cornersR  (numpy.ndarray) : 右カメラのチェスボードコーナー
     """
 
     gray_left  = cv2.cvtColor(frame_left,  cv2.COLOR_BGR2GRAY)
@@ -89,42 +105,55 @@ def detect_and_save_chessboard(
         cv2.CALIB_CB_NORMALIZE_IMAGE
     )
 
+    is_detect = False
+
     if retL and retR:
-        objpoints.append(objp)
-        imgpoints_left.append(cornersL)
-        imgpoints_right.append(cornersR)
+        is_detect = True
 
-        timestamp = time.time()
-        cv2.imwrite(f"{image_folder}/left_{timestamp}.jpg",  frame_left)
-        cv2.imwrite(f"{image_folder}/right_{timestamp}.jpg", frame_right)
-        print("チェスボードを検出して画像を保存")
-    else:
-        print("チェスボードが見つかりません")
+    return is_detect, cornersL, cornersR
 
-def perform_stereo_calibration(objpoints, imgpoints_left, imgpoints_right, cap_left_shape):
+def perform_stereo_calibration(
+    objpoints,
+    imgpoints_left,
+    imgpoints_right,
+    cap_left_shape
+    ):
     """
     ステレオキャリブレーションを実行します
 
     Args:
-        objpoints (list)       : 3Dポイントのリスト
-        imgpoints_left  (list) : 左カメラの検出した2Dポイントリスト
-        imgpoints_right (list) : 右カメラの検出した2Dポイントリスト
-        cap_left_shape (tuple) : 左カメラの画像の解像度（高さ, 幅）
+        objpoints       (list)  : 3Dポイントのリスト
+        imgpoints_left  (list)  : 左カメラの検出した2Dポイントリスト
+        imgpoints_right (list)  : 右カメラの検出した2Dポイントリスト
+        cap_left_shape  (tuple) : 左カメラの画像の解像度（高さ, 幅）
 
     Returns:
-        tuple                  : 各カメラの行列、歪み係数、回転行列、並進ベクトル
+        cameraMatrixL (numpy.ndarray) : 左カメラのカメラ行列
+        distCoeffsL   (numpy.ndarray) : 左カメラの歪み係数
+        cameraMatrixR (numpy.ndarray) : 右カメラのカメラ行列
+        distCoeffsR   (numpy.ndarray) : 右カメラの歪み係数
+        R             (numpy.ndarray) : 回転行列
+        T             (numpy.ndarray) : 並進ベクトル
     """
 
     print("キャリブレーションを実行中...")
 
-    _, cameraMatrixL, distCoeffsL, _, _ = cv2.calibrateCamera(
-        objpoints, imgpoints_left, cap_left_shape[::-1], None, None
+    _, cameraMatrixL, distCoeffsL, *_ = cv2.calibrateCamera(
+        objpoints, 
+        imgpoints_left, 
+        cap_left_shape[::-1], 
+        None, 
+        None
     )
-    _, cameraMatrixR, distCoeffsR, _, _ = cv2.calibrateCamera(
-        objpoints, imgpoints_right, cap_left_shape[::-1], None, None
+    _, cameraMatrixR, distCoeffsR, *_ = cv2.calibrateCamera(
+        objpoints, 
+        imgpoints_right, 
+        cap_left_shape[::-1],
+        None,
+        None
     )
 
-    _, _, _, _, _, R, T, E, F = cv2.stereoCalibrate(
+    *_, R, T, E, F = cv2.stereoCalibrate(
         objpoints, imgpoints_left, imgpoints_right,
         cameraMatrixL, distCoeffsL,
         cameraMatrixR, distCoeffsR,
@@ -139,13 +168,13 @@ def save_calibration_results(filename, cameraMatrixL, distCoeffsL, cameraMatrixR
     キャリブレーション結果を保存
 
     Args:
-        filename (str): 保存するファイルのパス
+        filename      (str)           : 保存するファイルのパス
         cameraMatrixL (numpy.ndarray) : 左カメラのカメラ行列
         distCoeffsL   (numpy.ndarray) : 左カメラの歪み係数
         cameraMatrixR (numpy.ndarray) : 右カメラのカメラ行列
         distCoeffsR   (numpy.ndarray) : 右カメラの歪み係数
-        R (numpy.ndarray)             : 回転行列
-        T (numpy.ndarray)             : 並進ベクトル
+        R             (numpy.ndarray) : 回転行列
+        T             (numpy.ndarray) : 並進ベクトル
     """
 
     cv_file = cv2.FileStorage(filename, cv2.FILE_STORAGE_WRITE)
@@ -168,11 +197,9 @@ def main():
     square_size = 1.0
     camera_id_left = 1
     camera_id_right = 2
-    image_folder = "calib_images"
+    save_image = False
+    image_folder = "ti"
     os.makedirs(image_folder, exist_ok=True)
-
-    global objp  # detect_and_save_chessboard内で使用
-    objp = prepare_chessboard_points(chessboard_size, square_size)
 
     objpoints = []
     imgpoints_left  = []
@@ -190,7 +217,12 @@ def main():
 
     try:
         capture_stereo_images(
-            cap_left, cap_right, chessboard_size, objpoints, imgpoints_left, imgpoints_right, image_folder
+            cap_left, cap_right,
+            objpoints,
+            imgpoints_left, imgpoints_right,
+            chessboard_size, square_size,
+            save_image,
+            image_folder
         )
     finally:
         cap_left.release()
